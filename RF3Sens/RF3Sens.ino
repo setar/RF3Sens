@@ -55,7 +55,9 @@ void setup(){
     #if defined(LASER_VCC_PIN)
       PIN_OUTPUT(LASER_VCC);
       PIN_HIGH(LASER_VCC);
-      analogWrite(LASER_VCC_PIN, RegPowLaser);//255=включить лазер , 0=выключить
+      #if defined (laser_power_fast_pwm)
+        analogWrite(LASER_VCC_PIN, RegPowLaser);//255=включить лазер , 0=выключить
+      #endif
     #endif
   #endif // laser_power_via_mcu
 
@@ -256,7 +258,7 @@ void loop(){
 //###########################################################################################
 // процедуры
 //-------------------------------------------------------------------------------------------
-#if defined(laser_power_via_mcu)
+#if defined(laser_power_fast_pwm)
 void RefrPowerLaser(uint8_t power)
 {
   if (power < 3 && RegPowLaser > 1){
