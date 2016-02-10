@@ -53,7 +53,7 @@ debug_type = 5  Данные перемещения мышки.
 */
 //#define DIGI_SPARK
 //#define ARDUINO_NANO // базовая распайка arduino nano
-#define ARDUINON_NANO_wPOWER  // распайка сенсора на arduino nano для питания с ног микроконтроллера
+#define ARDUINO_NANO_wPOWER  // распайка сенсора на arduino nano для питания с ног микроконтроллера
 
 /*
 Алгоритм детектирования, выбрать один нужный
@@ -98,8 +98,8 @@ debug_type = 5  Данные перемещения мышки.
 #if defined(ARDUINO_NANO)
 #include "boards/ArduinoNano.h"
 #endif
-#if defined(ARDUINON_NANO_wPOWER)
-#include "boards/ArduinoNano.h"
+#if defined(ARDUINO_NANO_wPOWER)
+#include "boards/ArduinoNano_wPower.h"
 #endif
 
 #if defined(debug_type) && defined(software_serial)
