@@ -79,9 +79,10 @@ void loop(){
 //###########################################################################################
 // штатный режим датчика для 3D принтера
 #ifndef debug_type
-
-#if defined(Algo_MaxPix)
   byte dataMax;
+#if defined(laser_power_pwm_target)
+  float RegStep;
+  boolean LaserPowerDropDown=false;
 #endif
 
 #if defined(Algo_MaxSqualMA)
@@ -104,8 +105,21 @@ void loop(){
 //-------------------------------------------------------------------------------------------
 #if defined(Algo_MaxPix)
     dataMax = ADNS_read(ADNS_MAX_PIX);
-    //RefrPowerLaser(dataMax);
-    dataMax > ADNS_CONST_MAX ? PIN_LOW(LED) : PIN_HIGH(LED);
+    #if defined(laser_power_pwm_target)
+      RegStep=RegPowLaser;
+      while(dataMax > laser_power_pwm_target || (dataMax < laser_power_pwm_target && RegPowLaser < 255)){
+        RefrPowerLaser(dataMax);
+        delay(1);
+        dataMax = ADNS_read(ADNS_MAX_PIX);
+      }
+      RegStep=RegStep-RegPowLaser;
+      if (RegStep>15){LaserPowerDropDown=true;}//приближается поверхность
+      if ((RegStep <-2) && LaserPowerDropDown) {PIN_LOW(LED);}
+      if (RegPowLaser==255){LaserPowerDropDown=false;PIN_HIGH(LED);}//удаляется поверхность
+      //(dataMax == laser_power_pwm_target) && (RegPowLaser<200) ? PIN_LOW(LED) : PIN_HIGH(LED);
+    #else //!laser_power_pwm_target
+      dataMax > ADNS_CONST_MAX ? PIN_LOW(LED) : PIN_HIGH(LED);
+    #endif //laser_power_pwm_target
 #endif //Algo_MaxPix
 //-------------------------------------------------------------------------------------------
 #if defined(Algo_MaxSqualMA)
@@ -146,12 +160,17 @@ void loop(){
   byte Frame[NUM_PIXS + 7],dataMax, dataSU;
 
   while(1){
+    #if defined(laser_power_pwm_target)
+      dataMax = ADNS_read(ADNS_MAX_PIX);
+      while(dataMax > laser_power_pwm_target || (dataMax < laser_power_pwm_target && RegPowLaser < 255)){
+        RefrPowerLaser(dataMax);
+        delay(1);
+        dataMax = ADNS_read(ADNS_MAX_PIX);
+      }
+    #endif //laser_power_pwm_target
     pixel_and_params_grab(Frame);
     SERIAL_OUT.write(Frame, NUM_PIXS + 7); // send frame in raw format
-    dataSU = Frame[4+NUM_PIXS];
-    dataMax = Frame[1+NUM_PIXS];
-    //RefrPowerLaser(dataSU);
-    //delay(2);
+    delay(2);
   }
 //-------------------------------------------------------------------------------------------
 #elif debug_type ==2
@@ -258,17 +277,32 @@ void loop(){
 //###########################################################################################
 // процедуры
 //-------------------------------------------------------------------------------------------
-#if defined(laser_power_fast_pwm)
+#if defined(laser_power_pwm_target)
 void RefrPowerLaser(uint8_t power)
 {
-  if (power < 3 && RegPowLaser > 1){
+  if (power > laser_power_pwm_target && RegPowLaser > 1){
     RegPowLaser--;
     analogWrite(LASER_VCC_PIN,RegPowLaser);
   }
-  if (power > 3 && RegPowLaser < 255){
+  if (power < laser_power_pwm_target && RegPowLaser < 255){
     RegPowLaser++;
     analogWrite(LASER_VCC_PIN,RegPowLaser);
   }
+}
+#endif
+//-------------------------------------------------------------------------------------------
+#if defined(Algo_MaxSqualMA)
+float GetSMA(uint8_t *buffer,byte depth,byte LastValue)
+{
+  float result=0;
+  byte temp;
+  for (byte x=depth-1 ; x>0 ; x--){
+    temp = buffer[x-1];
+    *(buffer + x) = temp;//сдвигаем массив результатов
+    result=result + *(buffer + x);
+  } 
+  result = (result + LastValue)/depth;
+  return result;
 }
 #endif
 //-------------------------------------------------------------------------------------------
