@@ -21,6 +21,7 @@ inline void pixel_grab(uint8_t *buffer, uint16_t nBytes);
 inline void pixel_and_params_grab(uint8_t *buffer);
 void ByteToString(uint8_t a);
 void Uint16ToString(uint16_t a);
+unsigned long currentTime;
 
 unsigned char Str[5];
 uint8_t RegPowLaser = 200;
@@ -94,6 +95,11 @@ void loop(){
   for (byte x=0 ; x<MA_LONG ; x++){dataSqual[x]=0;};
   MALongSqual=0; MAShortSqual=0;
 #endif
+#if defined(Algo_TimeBased)
+  boolean laser_in_sight=false, WaitProbe=true, FirstProbe = false, SecondProbe = false, sensed=false;
+  unsigned long FirstSensedTime;
+  byte BasePowLaser;
+#endif//Algo_TimeBased
   
   while(1){
     //dataMax = ADNS_read(ADNS_MAX_PIX);
@@ -143,6 +149,63 @@ void loop(){
       dataMax>ADNS_CONST_MAX ? laser_in_sight=true : laser_in_sight=false;
     }
 #endif // Algo_MaxSqualMA
+//-------------------------------------------------------------------------------------------
+#if defined(Algo_TimeBased)
+    dataMax = ADNS_read(ADNS_MAX_PIX);
+    while(dataMax > laser_power_pwm_target || (dataMax < laser_power_pwm_target && RegPowLaser < 255)){//порегулируем мощность лазера
+      RefrPowerLaser(dataMax);
+      delay(1);
+      dataMax = ADNS_read(ADNS_MAX_PIX);
+    }
+    RegPowLaser < 255 ? laser_in_sight=true : laser_in_sight=false;
+
+    if (laser_in_sight) { // лазер в поле зрения
+      if (WaitProbe && !SecondProbe){ // первое вхождение
+        FirstSensedTime=millis(); //начинаем замер времени
+        WaitProbe=false; FirstProbe=true; SecondProbe=false;// первый этап
+      }
+      if (FirstProbe){//первый замер
+        if (sensed){ // уже было срабатывание
+          if (RegPowLaser > (BasePowLaser + 50)){//  отошли от базового уровня на достаточное расстояние, переход ко второму этапу
+            WaitProbe=false; FirstProbe=false; SecondProbe=true;// второй этап
+            PIN_HIGH(LED);sensed=false; // отключаем сигнал срабатывания
+          }
+        }else{// ждем время
+          currentTime=millis();
+          if (currentTime >= (FirstSensedTime + TimeBased_wait_center)){ // время вышло, останавливаемся
+            PIN_LOW(LED);sensed=true; // сигнал срабатывания
+            BasePowLaser=RegPowLaser; // запоминаем значение регулировки лазера
+          }
+        }
+      }
+      if (SecondProbe){//второй замер
+        if (!sensed){// пока не было срабатывания
+          if (RegPowLaser < (BasePowLaser + 5)){//  подошли близко к базовому уровню срабатываем
+            PIN_LOW(LED);sensed=true; // включаем сигнал срабатывания
+          }
+        }else{// было финальное срабатывание на втором этапе
+          ;
+        }
+      }
+    }else{ // лазер вне поля зрения
+      if(!WaitProbe){ // если вне режима ожидания
+        if (sensed){ // выход лазера из поля после срабатывания - нормальная ситуация
+          if(FirstProbe){ // выход лазера из поля зрения между замерами, переходим ко ожиданию второго этапа
+             WaitProbe=true; FirstProbe=false; SecondProbe=true;// второй этап
+            PIN_HIGH(LED);sensed=false; // отключаем сигнал срабатывания
+          }
+          if(SecondProbe){ // выход лазера из поля после финального срабатывания, переходим ко ожиданию
+            WaitProbe=true; FirstProbe=false; SecondProbe=false;// ожидание
+            PIN_HIGH(LED);sensed=false; // отключаем сигнал срабатывания
+          }
+        }else{ // выход лазера из поля без срабатывания - аварийная ситуация
+          PIN_LOW(LED);sensed=true; // включаем сигнал срабатывания
+          WaitProbe=true; FirstProbe=false; SecondProbe=false;// ожидание
+        }
+      }
+    }
+
+#endif //Algo_TimeBased
 //-------------------------------------------------------------------------------------------
   }
 //###########################################################################################
