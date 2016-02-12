@@ -84,11 +84,10 @@ void loop(){
   float RegStep;
   boolean LaserPowerDropDown=false;
 #endif
-
 #if defined(Algo_MaxSqualMA)
-  #define MA_LONG 20 // глубина длинной среднескользящей
-  #define MA_SHORT 5 // глубина короткой среднескользящей
-  byte dataSqual[MA_LONG];
+  #define MA_LONG 10 // глубина длинной среднескользящей
+  #define MA_SHORT 3 // глубина короткой среднескользящей
+  byte dataSqual[MA_LONG], LastSqual;
   float MALongSqual,MAShortSqual;
   boolean laser_in_sight=false, sensed = false, SqualGrow = false;
 
@@ -129,15 +128,10 @@ void loop(){
         dataMax = ADNS_read(ADNS_MAX_PIX);
         dataMax>ADNS_CONST_MAX ? laser_in_sight=true : laser_in_sight=false;
       } else { // поиск максимума качества
-        MALongSqual=MALongSqual-dataSqual[MA_LONG-1]/MA_LONG;
-        MAShortSqual=MAShortSqual-dataSqual[MA_SHORT-1]/MA_SHORT;
-        for (byte x=MA_LONG-1 ; x>0 ; x--){dataSqual[x]=dataSqual[x-1];}
-        dataSqual[0] = ADNS_read(ADNS_SQUAL);
-        MALongSqual=MALongSqual+dataSqual[0]/MA_LONG;
-        MAShortSqual=MAShortSqual+dataSqual[0]/MA_SHORT;
-        if ( (MALongSqual+1) < MAShortSqual){ //качество поверхности растет
-          SqualGrow = true;
-        }else if (SqualGrow && MALongSqual > (MAShortSqual+1)){// качество уменьшается, лучше не станет - срабатываем
+        LastSqual = ADNS_read(ADNS_SQUAL);
+        MALongSqual=GetSMA(dataSqual,MA_LONG,LastSqual);// для вычисления среднескользящей добавим свежие замеры
+        MAShortSqual=GetSMA(dataSqual,MA_SHORT,LastSqual);// для вычисления среднескользящей добавим свежие замеры
+        if ( MALongSqual > MAShortSqual){// качество уменьшается, лучше не станет - срабатываем
           PIN_LOW(LED); sensed=true; SqualGrow = false;
           MALongSqual=0; MAShortSqual=0;
           for (byte x=0 ; x<MA_LONG ; x++){dataSqual[x]=0;};
@@ -196,13 +190,41 @@ void loop(){
 #elif debug_type ==3
 //-------------------------------------------------------------------------------------------
   //листинг для электронных таблиц: В шапке названия, дальше только данные разделенные "tab".
-  byte Frame[7];
+  byte Frame[7],dataMax;
+#if defined(Algo_MaxSqualMA)
+  #define MA_LONG 10 // глубина длинной среднескользящей
+  #define MA_SHORT 3 // глубина короткой среднескользящей
+  byte dataSqual[MA_LONG], LastSqual;
+  float MALongSqual,MAShortSqual;
+  for (byte x=0 ; x<MA_LONG ; x++){dataSqual[x]=0;};
+  MALongSqual=0; MAShortSqual=0;
+  //заголовок
+  SERIAL_OUT.println  (F  ("Squal:\tSqualMA_l:\tMax:\tMin:\tSum:\tShutter:\tLaserPower:"));
+#else
   //заголовок
   SERIAL_OUT.println  (F  ("Squal:\tMax:\tMin:\tSum:\tShutter:\tLaserPower:"));
+#endif //Algo_MaxSqualMA
   while(1){
+    #if defined(laser_power_pwm_target)
+      dataMax = ADNS_read(ADNS_MAX_PIX);
+      while(dataMax > laser_power_pwm_target || (dataMax < laser_power_pwm_target && RegPowLaser < 255)){
+        RefrPowerLaser(dataMax);
+        delay(1);
+        dataMax = ADNS_read(ADNS_MAX_PIX);
+      }
+    #endif //laser_power_pwm_target
     params_grab(Frame);
-
+#if defined(Algo_MaxSqualMA)
+    LastSqual = Frame[0];
+    MALongSqual=GetSMA(dataSqual,MA_LONG,LastSqual);// для вычисления среднескользящей добавим свежие замеры
+    //MAShortSqual=GetSMA(dataSqual,MA_SHORT,LastSqual);// для вычисления среднескользящей добавим свежие замеры
+    //dtostrf(MALongSqual, 5, 3, (char *)Str);
     ByteToString(Frame[0]); SERIAL_OUT.write(Str[2]); SERIAL_OUT.write(Str[1]); SERIAL_OUT.write(Str[0]); SERIAL_OUT.write(0x09);
+    SERIAL_OUT.print(MALongSqual,2);
+    SERIAL_OUT.write(0x09);
+#else 
+    ByteToString(Frame[0]); SERIAL_OUT.write(Str[2]); SERIAL_OUT.write(Str[1]); SERIAL_OUT.write(Str[0]); SERIAL_OUT.write(0x09);
+#endif //Algo_MaxSqualMA
     ByteToString(Frame[1]); SERIAL_OUT.write(Str[2]); SERIAL_OUT.write(Str[1]); SERIAL_OUT.write(Str[0]); SERIAL_OUT.write(0x09);
     ByteToString(Frame[2]); SERIAL_OUT.write(Str[2]); SERIAL_OUT.write(Str[1]); SERIAL_OUT.write(Str[0]); SERIAL_OUT.write(0x09);
     ByteToString(Frame[3]); SERIAL_OUT.write(Str[2]); SERIAL_OUT.write(Str[1]); SERIAL_OUT.write(Str[0]); SERIAL_OUT.write(0x09);
