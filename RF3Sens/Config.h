@@ -46,7 +46,7 @@ debug_type = 5  Данные перемещения мышки.
 */
 //#define laser_power_via_mcu // режим питания лазера с ног микроконтроллера (подаем питание на нужные ноги)
 //#define laser_power_fast_pwm // используем ли управление мощьностью через pwm модуляцию (лезер включен через диод и шутирован конденсатором)
-//#define laser_power_pwm_target 100// значение MaxPix к которому стараемся отрегулировать мощность лазера (рационально ADNS_CONST_MAX или немного меньше)
+//#define laser_power_maxpix_target 100// значение MaxPix к которому стараемся отрегулировать мощность лазера (рационально ADNS_CONST_MAX или немного меньше)
 //#define sens_power_via_mcu // режим питания сенсора с ног микроконтроллера (подаем питание на нужные ноги)
 
 /*
@@ -76,8 +76,8 @@ debug_type = 5  Данные перемещения мышки.
   #error "This board can be used only with software_serial"
 #endif
 
-#if (defined(Algo_TimeBased)&&!defined(laser_power_pwm_target))
-  #error "Time based Algoritm need to use laser_power_pwm_target"
+#if (defined(Algo_TimeBased)&&!defined(laser_power_maxpix_target))
+  #error "Time based Algoritm need to use laser_power_maxpix_target"
 #endif
 
 #if debug_type == 5

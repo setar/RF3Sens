@@ -81,7 +81,7 @@ void loop(){
 // штатный режим датчика для 3D принтера
 #ifndef debug_type
   byte dataMax;
-#if defined(laser_power_pwm_target)
+#if defined(laser_power_maxpix_target)
   float RegStep;
   boolean LaserPowerDropDown=false;
 #endif
@@ -110,9 +110,9 @@ void loop(){
 //-------------------------------------------------------------------------------------------
 #if defined(Algo_MaxPix)
     dataMax = ADNS_read(ADNS_MAX_PIX);
-    #if defined(laser_power_pwm_target)
+    #if defined(laser_power_maxpix_target)
       RegStep=RegPowLaser;
-      while(dataMax > laser_power_pwm_target || (dataMax < laser_power_pwm_target && RegPowLaser < 255)){
+      while(dataMax > laser_power_maxpix_target || (dataMax < laser_power_maxpix_target && RegPowLaser < 255)){
         RefrPowerLaser(dataMax);
         delay(1);
         dataMax = ADNS_read(ADNS_MAX_PIX);
@@ -121,10 +121,10 @@ void loop(){
       if (RegStep>15){LaserPowerDropDown=true;}//приближается поверхность
       if ((RegStep <-2) && LaserPowerDropDown) {PIN_LOW(LED);}
       if (RegPowLaser==255){LaserPowerDropDown=false;PIN_HIGH(LED);}//удаляется поверхность
-      //(dataMax == laser_power_pwm_target) && (RegPowLaser<200) ? PIN_LOW(LED) : PIN_HIGH(LED);
-    #else //!laser_power_pwm_target
+      //(dataMax == laser_power_maxpix_target) && (RegPowLaser<200) ? PIN_LOW(LED) : PIN_HIGH(LED);
+    #else //!laser_power_maxpix_target
       dataMax > ADNS_CONST_MAX ? PIN_LOW(LED) : PIN_HIGH(LED);
-    #endif //laser_power_pwm_target
+    #endif //laser_power_maxpix_target
 #endif //Algo_MaxPix
 //-------------------------------------------------------------------------------------------
 #if defined(Algo_MaxSqualMA)
@@ -151,8 +151,10 @@ void loop(){
 #endif // Algo_MaxSqualMA
 //-------------------------------------------------------------------------------------------
 #if defined(Algo_TimeBased)
-    dataMax = ADNS_read(ADNS_MAX_PIX);
-    while(dataMax > laser_power_pwm_target || (dataMax < laser_power_pwm_target && RegPowLaser < 255)){//порегулируем мощность лазера
+    //порегулируем мощность лазера
+    while( (dataMax = ADNS_read(ADNS_MAX_PIX)) &&
+           ( dataMax > laser_power_maxpix_target ||
+           ( dataMax < laser_power_maxpix_target && RegPowLaser < 255) ) ){
       RefrPowerLaser(dataMax);
       delay(1);
       dataMax = ADNS_read(ADNS_MAX_PIX);
@@ -217,14 +219,14 @@ void loop(){
   byte Frame[NUM_PIXS + 7],dataMax, dataSU;
 
   while(1){
-    #if defined(laser_power_pwm_target)
+    #if defined(laser_power_maxpix_target)
       dataMax = ADNS_read(ADNS_MAX_PIX);
-      while(dataMax > laser_power_pwm_target || (dataMax < laser_power_pwm_target && RegPowLaser < 255)){
+      while(dataMax > laser_power_maxpix_target || (dataMax < laser_power_maxpix_target && RegPowLaser < 255)){
         RefrPowerLaser(dataMax);
         delay(1);
         dataMax = ADNS_read(ADNS_MAX_PIX);
       }
-    #endif //laser_power_pwm_target
+    #endif //laser_power_maxpix_target
     pixel_and_params_grab(Frame);
     SERIAL_OUT.write(Frame, NUM_PIXS + 7); // send frame in raw format
     delay(2);
@@ -268,14 +270,14 @@ void loop(){
   SERIAL_OUT.println  (F  ("Squal:\tMax:\tMin:\tSum:\tShutter:\tLaserPower:"));
 #endif //Algo_MaxSqualMA
   while(1){
-    #if defined(laser_power_pwm_target)
+    #if defined(laser_power_maxpix_target)
       dataMax = ADNS_read(ADNS_MAX_PIX);
-      while(dataMax > laser_power_pwm_target || (dataMax < laser_power_pwm_target && RegPowLaser < 255)){
+      while(dataMax > laser_power_maxpix_target || (dataMax < laser_power_maxpix_target && RegPowLaser < 255)){
         RefrPowerLaser(dataMax);
         delay(1);
         dataMax = ADNS_read(ADNS_MAX_PIX);
       }
-    #endif //laser_power_pwm_target
+    #endif //laser_power_maxpix_target
     params_grab(Frame);
 #if defined(Algo_MaxSqualMA)
     LastSqual = Frame[0];
@@ -362,14 +364,13 @@ void loop(){
 //###########################################################################################
 // процедуры
 //-------------------------------------------------------------------------------------------
-#if defined(laser_power_pwm_target)
-void RefrPowerLaser(uint8_t power)
-{
-  if (power > laser_power_pwm_target && RegPowLaser > 1){
+#if defined(laser_power_maxpix_target)
+void RefrPowerLaser(uint8_t power){
+  if (power > laser_power_maxpix_target && RegPowLaser > 1){
     RegPowLaser--;
     analogWrite(LASER_VCC_PIN,RegPowLaser);
   }
-  if (power < laser_power_pwm_target && RegPowLaser < 255){
+  if (power < laser_power_maxpix_target && RegPowLaser < 255){
     RegPowLaser++;
     analogWrite(LASER_VCC_PIN,RegPowLaser);
   }
