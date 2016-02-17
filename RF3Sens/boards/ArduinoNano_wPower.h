@@ -34,12 +34,12 @@
 #define SDIO_PIN        5
 #define SDIO_DDR        DDRB
 #define SDIO_PORT       PORTB
-#define SDIO_IN    PINB
+#define SDIO_IN         PINB
 
 //PD5 D5 TRIGGER_PIN
 #define TRIG_PIN         5
 #define TRIG_DDR         DDRD
-#define TRIG_IN     PORTD
+#define TRIG_IN          PORTD
 
 #if defined(sens_power_via_mcu)
   // Sensor power GND
@@ -56,10 +56,10 @@
 
 #if defined(laser_power_via_mcu)
   // laser power GND
-  //PB4 D12
-  //#define LASER_GND_PIN   4
-  //#define LASER_GND_DDR   DDRB
-  //#define LASER_GND_PORT  PORTB
+  // нужно ли ? в общем случае цепляем на питающий GND
+  //#define LASER_GND_PIN
+  //#define LASER_GND_DDR
+  //#define LASER_GND_PORT
   // laser power vcc
   //PD2 D2
   #define LASER_VCC_PIN   2
